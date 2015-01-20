@@ -1,0 +1,3 @@
+include ':app', ':MyDaoGenerator', ':DaoExample'
+project(':MyDaoGenerator').projectDir = new File('GreenDaoForAndroidStudio/GreenDaoForAndroidStudio/MyDaoGenerator')
+project(':DaoExample').projectDir = new File('GreenDaoForAndroidStudio/GreenDaoForAndroidStudio/DaoExample')

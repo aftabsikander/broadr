@@ -1,0 +1,106 @@
+<resources>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Strings related to Settings -->
+
+    <!-- Example General settings -->
+    <string name="pref_header_general">General</string>
+
+    <string name="pref_key_flickr_images">use_flickr_images</string>
+    <string name="pref_title_flickr_images">Dynamic backgrounds</string>
+    <string name="pref_description_flickr_images">Use geo tagged images from flickr</string>
+
+    <string name="pref_title_display_name">Display name</string>
+    <string name="pref_default_display_name">John Smith</string>
+
+    <string name="pref_title_add_friends_to_messages">Add friends to messages</string>
+    <string-array name="pref_example_list_titles">
+        <item>Always</item>
+        <item>When possible</item>
+        <item>Never</item>
+    </string-array>
+
+    <string name="pref_title_distance_type">Measure distance in</string>
+    <string name="pref_distance_type">distance_type</string>
+    <string name="pref_title_notif_period">Notifications interval</string>
+    <string name="pref_title_loc_notif_period">New location updates interval</string>
+    <string name="pref_notif_period">notif_period</string>
+    <string name="pref_loc_notif_period">loc_notif_period</string>
+
+    <string-array name="pref_distance_list_values">
+        <item>km</item>
+        <item>mi</item>
+    </string-array>
+
+    <string-array name="pref_distance_list_titles">
+        <item>km</item>
+        <item>mi</item>
+    </string-array>
+
+    <string-array name="pref_notif_time_titles">
+        <item>Always</item>
+        <item>15 Mins</item>
+        <item>30 Mins</item>
+        <item>1 Hr</item>
+        <item>2 Hr</item>
+        <item>Never</item>
+    </string-array>
+
+    <string-array name="pref_notif_time_values">
+        <item>1</item>
+        <item>900000</item>
+        <item>1800000</item>
+        <item>3600000</item>
+        <item>7200000</item>
+        <item>0</item>
+    </string-array>
+
+    <string-array name="pref_loc_notif_titles">
+        <item>Each day</item>
+        <item>2 days</item>
+        <item>4 days</item>
+        <item>6 days</item>
+        <item>A week</item>
+    </string-array>
+
+    <string-array name="pref_loc_notif_values">
+        <item>86400000</item>
+        <item>172800000</item>
+        <item>345600000</item>
+        <item>518400000</item>
+        <item>604800000</item>
+    </string-array>
+
+    <!-- Example settings for Data & Sync -->
+    <string name="pref_header_data_sync">Data &amp; sync</string>
+
+    <string name="pref_title_sync_frequency">Sync frequency</string>
+    <string-array name="pref_sync_frequency_titles">
+        <item>15 minutes</item>
+        <item>30 minutes</item>
+        <item>1 hour</item>
+        <item>3 hours</item>
+        <item>6 hours</item>
+        <item>Never</item>
+    </string-array>
+    <string-array name="pref_sync_frequency_values">
+        <item>15</item>
+        <item>30</item>
+        <item>60</item>
+        <item>180</item>
+        <item>360</item>
+        <item>-1</item>
+    </string-array>
+
+    <string name="pref_title_system_sync_settings">System sync settings</string>
+
+    <!-- Example settings for Notifications -->
+    <string name="pref_header_notifications">Notifications</string>
+
+    <string name="pref_title_new_message_notifications">New message notifications</string>
+
+    <string name="pref_title_ringtone">Ringtone</string>
+    <string name="pref_ringtone_silent">Silent</string>
+
+    <string name="pref_title_vibrate">Vibrate</string>
+</resources>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+    <item name="tag_item_id" type="id" />
+    <item name="tag_box_name" type="id" />
+    <item name="tag_box_size" type="id" />
+    <item name="tag_box_description" type="id" />
+</resources>

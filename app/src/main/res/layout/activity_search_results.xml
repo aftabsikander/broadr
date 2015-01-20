@@ -1,0 +1,23 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/base"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/backtile"
+    android:cacheColorHint="@android:color/transparent"
+    android:scaleType="centerCrop"
+    tools:context="com.abbiya.broadr.activities.SearchResultsActivity">
+
+    <include
+        android:id="@+id/toolbar"
+        layout="@layout/toolbar" />
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/searchMessagesView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/toolbar"
+        android:alpha="0.9"
+        android:background="@drawable/row_transparent_back" />
+
+</RelativeLayout>

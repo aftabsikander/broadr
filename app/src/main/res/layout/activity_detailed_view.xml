@@ -1,0 +1,118 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/base"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/backtile"
+    android:cacheColorHint="@android:color/transparent"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    tools:context="com.abbiya.broadr.activities.DetailedViewActivity">
+
+    <include
+        android:id="@+id/toolbar"
+        layout="@layout/toolbar" />
+
+    <LinearLayout
+        android:id="@+id/linearLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/toolbar"
+        android:alpha="0.9"
+        android:background="@drawable/row_transparent_back"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/textView_messageContent"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="false"
+            android:layout_alignParentTop="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="8sp"
+            android:alpha="0.9"
+            android:autoLink="web|email|phone|map"
+            android:gravity="center"
+            android:maxLines="4"
+            android:scrollbars="vertical"
+            android:text="@string/message_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:textStyle="normal" />
+
+        <TextView
+            android:id="@+id/textView_address"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_above="@+id/swipe"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:layout_margin="8dp"
+            android:autoLink="web|email|phone|map"
+            android:gravity="center"
+            android:padding="2sp"
+            android:text="@string/location_address"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:textColor="@android:color/tertiary_text_light"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/etxt_comment"
+        android:layout_below="@+id/linearLayout"
+        android:alpha="0.9"
+        android:background="@drawable/row_transparent_back"
+        android:orientation="vertical">
+
+        <android.support.v4.widget.SwipeRefreshLayout
+            android:id="@+id/swipe"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_above="@+id/etxt_comment"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:layout_below="@+id/linearLayout">
+
+            <android.support.v7.widget.RecyclerView
+                android:id="@+id/listView_comments"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignStart="@+id/textView_messageContent"
+                android:layout_below="@+id/textView_messageContent"
+                android:layout_marginBottom="43dp"
+                android:listSelector="@android:color/transparent" />
+        </android.support.v4.widget.SwipeRefreshLayout>
+    </LinearLayout>
+
+    <EditText
+        android:id="@+id/etxt_comment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="false"
+        android:alpha="0.9"
+        android:background="@drawable/row_transparent_back"
+        android:clickable="false"
+        android:ems="10"
+        android:hint="@string/detailed_view_send_hint"
+        android:imeOptions="actionSend"
+        android:inputType="text|textAutoCorrect|textCapSentences"
+        android:maxHeight="30dp"
+        android:maxLength="140"
+        android:maxLines="3"
+        android:minHeight="@dimen/abc_action_bar_default_height_material"
+        android:nextFocusLeft="@id/etxt_comment"
+        android:nextFocusUp="@id/etxt_comment"
+        android:textColor="@android:color/white"
+        android:textColorHint="@color/accent_material_light"
+        android:textCursorDrawable="@null"
+        android:typeface="monospace">
+
+        <requestFocus />
+    </EditText>
+
+</RelativeLayout>

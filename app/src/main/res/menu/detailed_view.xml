@@ -1,0 +1,23 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.abbiya.broadr.activities.DetailedViewActivity">
+    <item
+        android:id="@+id/action_share_link"
+        android:icon="@android:drawable/ic_menu_share"
+        android:orderInCategory="100"
+        android:title="@string/action_share"
+        app:actionProviderClass="android.support.v7.widget.ShareActionProvider"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_show_bg"
+        android:orderInCategory="110"
+        android:title="@string/action_show_bg"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_open_map"
+        android:icon="@android:drawable/ic_menu_compass"
+        android:orderInCategory="120"
+        android:title="@string/action_show_in_map"
+        app:showAsAction="never" />
+</menu>
