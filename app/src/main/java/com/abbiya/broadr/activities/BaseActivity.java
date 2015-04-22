@@ -15,6 +15,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.View;
 
 import com.abbiya.broadr.BroadrApp;
@@ -28,17 +29,22 @@ import com.abbiya.broadr.utility.AppSingleton;
 import com.abbiya.broadr.utility.Constants;
 import com.abbiya.broadr.utility.LocationUtils;
 import com.abbiya.broadr.utility.StringUtilities;
+
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.GooglePlayServicesUtil;
-import com.google.android.gms.location.LocationClient;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
+import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+
 import com.path.android.jobqueue.JobManager;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -49,8 +55,11 @@ import ch.hsr.geohash.WGS84Point;
 import roboguice.activity.RoboActionBarActivity;
 
 public class BaseActivity extends RoboActionBarActivity implements
-        GooglePlayServicesClient.ConnectionCallbacks,
-        GooglePlayServicesClient.OnConnectionFailedListener, LocationListener {
+        ConnectionCallbacks,
+        OnConnectionFailedListener,
+        LocationListener {
+    protected static final String TAG = "location-updates";
+
     public static String active_activity = "";
     protected boolean visible = false;
     protected SharedPreferences mPrefs;
@@ -61,9 +70,21 @@ public class BaseActivity extends RoboActionBarActivity implements
 
     //location stuff
     protected Board currentBoard;
-    protected boolean mUpdatesRequested = false;
+
+    /**
+     * Provides the entry point to Google Play services.
+     */
+    protected GoogleApiClient mGoogleApiClient;
+
+    /**
+     * Stores parameters for requests to the FusedLocationProviderApi.
+     */
     protected LocationRequest mLocationRequest;
-    protected LocationClient mLocationClient;
+
+    /**
+     * Represents a geographical location.
+     */
+    protected Location mCurrentLocation;
 
     protected long locNotifInterval;
     protected boolean kmOrMi = true;
@@ -72,6 +93,35 @@ public class BaseActivity extends RoboActionBarActivity implements
     protected String latestBGUri;
     protected String registrationId;
     protected Toolbar toolbar;
+
+
+    /**
+     * The desired interval for location updates. Inexact. Updates may be more or less frequent.
+     */
+    public static final long UPDATE_INTERVAL_IN_MILLISECONDS = 10000;
+
+    /**
+     * The fastest rate for active location updates. Exact. Updates will never be more frequent
+     * than this value.
+     */
+    public static final long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS =
+            UPDATE_INTERVAL_IN_MILLISECONDS / 2;
+
+    /**
+     * Tracks the status of the location updates request. Value changes when the user presses the
+     * Start Updates and Stop Updates buttons.
+     */
+    protected Boolean mRequestingLocationUpdates;
+
+    /**
+     * Time when the location was updated represented as a String.
+     */
+    protected String mLastUpdateTime;
+
+    // Keys for storing activity state in the Bundle.
+    protected final static String REQUESTING_LOCATION_UPDATES_KEY = "requesting-location-updates-key";
+    protected final static String LOCATION_KEY = "location-key";
+    protected final static String LAST_UPDATED_TIME_STRING_KEY = "last-updated-time-string-key";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,16 +139,26 @@ public class BaseActivity extends RoboActionBarActivity implements
         sPrefs = BroadrApp.getSettingsPreferences();
         mEditor = mPrefs.edit();
 
-        mUpdatesRequested = true;
-        mLocationClient = new LocationClient(context, this, this);
+        mRequestingLocationUpdates = true;
+        mLastUpdateTime = "";
 
-        mLocationRequest = LocationRequest.create()
-                .setInterval(15000)
-                .setFastestInterval(5000)
-                .setSmallestDisplacement(50)
-                .setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+        buildGoogleApiClient();
 
         init();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Connect the client.
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    protected void onStop() {
+        // Disconnecting the client invalidates it.
+        mGoogleApiClient.disconnect();
+        super.onStop();
     }
 
     @Override
@@ -106,16 +166,15 @@ public class BaseActivity extends RoboActionBarActivity implements
         super.onResume();
         visible = true;
 
-        int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
-        if (resultCode == ConnectionResult.SUCCESS) {
-            if (!mLocationClient.isConnected()) {
-                mLocationClient.connect();
-            }
-        } else {
-            GooglePlayServicesUtil.getErrorDialog(resultCode, this, 1).show();
-        }
-
         init();
+
+        // Within {@code onPause()}, we pause location updates, but leave the
+        // connection to GoogleApiClient intact.  Here, we resume receiving
+        // location updates if the user has requested them.
+
+        if (mGoogleApiClient.isConnected() && mRequestingLocationUpdates) {
+            startLocationUpdates();
+        }
     }
 
     @Override
@@ -125,9 +184,9 @@ public class BaseActivity extends RoboActionBarActivity implements
 
         BaseActivity.active_activity = "";
 
-        if (mLocationClient.isConnected()) {
-            mLocationClient.removeLocationUpdates(this);
-            mLocationClient.disconnect();
+        // Stop location updates to save battery, but don't disconnect the GoogleApiClient object.
+        if (mGoogleApiClient.isConnected()) {
+            stopLocationUpdates();
         }
     }
 
@@ -280,21 +339,9 @@ public class BaseActivity extends RoboActionBarActivity implements
             String lastLatitude = mPrefs.getString(Constants.LATEST_LATITUDE, null);
 
             if (lastLatitude == null || lastLatitude == null) {
-                Location lastLocation = null;
-                try {
-                    if (mLocationClient.isConnecting() || !mLocationClient.isConnected()) {
-                        //Toast.makeText(MainActivity.this, "Connecting to get the location", Toast.LENGTH_LONG).show();
-                    }
-                    if (mLocationClient.isConnected()) {
-                        lastLocation = mLocationClient.getLastLocation();
-                    }
-                } catch (IllegalStateException e) {
-                    e.printStackTrace();
-                }
-                if (mLocationClient != null && lastLocation != null) {
-                    lastLocation = mLocationClient.getLastLocation();
-                    longitude = lastLocation.getLongitude();
-                    latitude = lastLocation.getLatitude();
+                if (mGoogleApiClient.isConnected() && mCurrentLocation != null) {
+                    longitude = mCurrentLocation.getLongitude();
+                    latitude = mCurrentLocation.getLatitude();
                 }
             } else {
                 longitude = Double.valueOf(lastLongitude);
@@ -388,35 +435,6 @@ public class BaseActivity extends RoboActionBarActivity implements
         startActivityForResult(gpsOptionsIntent, Constants.LOCATION_SETTINGS);
     }
 
-    @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {
-        if (connectionResult.hasResolution()) {
-            try {
-                connectionResult.startResolutionForResult(
-                        this,
-                        Constants.PLAY_SERVICES_RESOLUTION_REQUEST);
-            } catch (IntentSender.SendIntentException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    @Override
-    public void onDisconnected() {
-        mLocationClient.removeLocationUpdates(this);
-    }
-
-    @Override
-    public void onConnected(Bundle bundle) {
-        mLocationClient.requestLocationUpdates(mLocationRequest, this);
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-        storeLocation(location.getLatitude(), location.getLongitude());
-        sendLocationUpdate(true);
-    }
-
     protected void openLink(String uri) {
         Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
         startActivity(browserIntent);
@@ -442,5 +460,179 @@ public class BaseActivity extends RoboActionBarActivity implements
         public Dialog onCreateDialog(Bundle savedInstanceState) {
             return mDialog;
         }
+    }
+
+
+    /**
+     * Updates fields based on data stored in the bundle.
+     *
+     * @param savedInstanceState The activity state saved in the Bundle.
+     */
+    private void updateValuesFromBundle(Bundle savedInstanceState) {
+        Log.i(TAG, "Updating values from bundle");
+        if (savedInstanceState != null) {
+            // Update the value of mRequestingLocationUpdates from the Bundle, and make sure that
+            // the Start Updates and Stop Updates buttons are correctly enabled or disabled.
+            if (savedInstanceState.keySet().contains(REQUESTING_LOCATION_UPDATES_KEY)) {
+                mRequestingLocationUpdates = savedInstanceState.getBoolean(
+                        REQUESTING_LOCATION_UPDATES_KEY);
+            }
+
+            // Update the value of mCurrentLocation from the Bundle and update the UI to show the
+            // correct latitude and longitude.
+            if (savedInstanceState.keySet().contains(LOCATION_KEY)) {
+                // Since LOCATION_KEY was found in the Bundle, we can be sure that mCurrentLocation
+                // is not null.
+                mCurrentLocation = savedInstanceState.getParcelable(LOCATION_KEY);
+            }
+
+            // Update the value of mLastUpdateTime from the Bundle and update the UI.
+            if (savedInstanceState.keySet().contains(LAST_UPDATED_TIME_STRING_KEY)) {
+                mLastUpdateTime = savedInstanceState.getString(LAST_UPDATED_TIME_STRING_KEY);
+            }
+        }
+    }
+
+    /**
+     * Builds a GoogleApiClient. Uses the {@code #addApi} method to request the
+     * LocationServices API.
+     */
+    protected synchronized void buildGoogleApiClient() {
+        Log.i(TAG, "Building GoogleApiClient");
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(LocationServices.API)
+                .build();
+        createLocationRequest();
+    }
+
+    /**
+     * Sets up the location request. Android has two location request settings:
+     * {@code ACCESS_COARSE_LOCATION} and {@code ACCESS_FINE_LOCATION}. These settings control
+     * the accuracy of the current location. This sample uses ACCESS_FINE_LOCATION, as defined in
+     * the AndroidManifest.xml.
+     * <p/>
+     * When the ACCESS_FINE_LOCATION setting is specified, combined with a fast update
+     * interval (5 seconds), the Fused Location Provider API returns location updates that are
+     * accurate to within a few feet.
+     * <p/>
+     * These settings are appropriate for mapping applications that show real-time location
+     * updates.
+     */
+    protected void createLocationRequest() {
+        mLocationRequest = new LocationRequest();
+
+        // Sets the desired interval for active location updates. This interval is
+        // inexact. You may not receive updates at all if no location sources are available, or
+        // you may receive them slower than requested. You may also receive updates faster than
+        // requested if other applications are requesting location at a faster interval.
+        mLocationRequest.setInterval(UPDATE_INTERVAL_IN_MILLISECONDS);
+
+        // Sets the fastest rate for active location updates. This interval is exact, and your
+        // application will never receive updates faster than this value.
+        mLocationRequest.setFastestInterval(FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS);
+
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+    }
+
+    /**
+     * Requests location updates from the FusedLocationApi.
+     */
+    protected void startLocationUpdates() {
+        // The final argument to {@code requestLocationUpdates()} is a LocationListener
+        // (http://developer.android.com/reference/com/google/android/gms/location/LocationListener.html).
+        LocationServices.FusedLocationApi.requestLocationUpdates(
+                mGoogleApiClient, mLocationRequest, this);
+    }
+
+    /**
+     * Removes location updates from the FusedLocationApi.
+     */
+    protected void stopLocationUpdates() {
+        // It is a good practice to remove location requests when the activity is in a paused or
+        // stopped state. Doing so helps battery performance and is especially
+        // recommended in applications that request frequent location updates.
+
+        // The final argument to {@code requestLocationUpdates()} is a LocationListener
+        // (http://developer.android.com/reference/com/google/android/gms/location/LocationListener.html).
+        LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
+    }
+
+    /**
+     * Runs when a GoogleApiClient object successfully connects.
+     */
+    @Override
+    public void onConnected(Bundle connectionHint) {
+        Log.i(TAG, "Connected to GoogleApiClient");
+
+        // If the initial location was never previously requested, we use
+        // FusedLocationApi.getLastLocation() to get it. If it was previously requested, we store
+        // its value in the Bundle and check for it in onCreate(). We
+        // do not request it again unless the user specifically requests location updates by pressing
+        // the Start Updates button.
+        //
+        // Because we cache the value of the initial location in the Bundle, it means that if the
+        // user launches the activity,
+        // moves to a new location, and then changes the device orientation, the original location
+        // is displayed as the activity is re-created.
+        if (mCurrentLocation == null) {
+            mCurrentLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+            mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
+        }
+
+        // If the user presses the Start Updates button before GoogleApiClient connects, we set
+        // mRequestingLocationUpdates to true (see startUpdatesButtonHandler()). Here, we check
+        // the value of mRequestingLocationUpdates and if it is true, we start location updates.
+        if (mRequestingLocationUpdates) {
+            startLocationUpdates();
+        }
+    }
+
+    /**
+     * Callback that fires when the location changes.
+     */
+    @Override
+    public void onLocationChanged(Location location) {
+        mCurrentLocation = location;
+        mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
+
+        storeLocation(location.getLatitude(), location.getLongitude());
+        sendLocationUpdate(true);
+    }
+
+    @Override
+    public void onConnectionSuspended(int cause) {
+        // The connection to Google Play services was lost for some reason. We call connect() to
+        // attempt to re-establish the connection.
+        Log.i(TAG, "Connection suspended");
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    public void onConnectionFailed(ConnectionResult result) {
+        // Refer to the javadoc for ConnectionResult to see what error codes might be returned in
+        // onConnectionFailed.
+        if (result.hasResolution()) {
+            try {
+                result.startResolutionForResult(
+                        this,
+                        Constants.PLAY_SERVICES_RESOLUTION_REQUEST);
+            } catch (IntentSender.SendIntentException e) {
+                e.printStackTrace();
+            }
+        }
+        Log.i(TAG, "Connection failed: ConnectionResult.getErrorCode() = " + result.getErrorCode());
+    }
+
+
+    /**
+     * Stores activity data in the Bundle.
+     */
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        savedInstanceState.putBoolean(REQUESTING_LOCATION_UPDATES_KEY, mRequestingLocationUpdates);
+        savedInstanceState.putParcelable(LOCATION_KEY, mCurrentLocation);
+        savedInstanceState.putString(LAST_UPDATED_TIME_STRING_KEY, mLastUpdateTime);
+        super.onSaveInstanceState(savedInstanceState);
     }
 }
