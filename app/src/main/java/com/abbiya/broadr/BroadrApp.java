@@ -13,6 +13,7 @@ import com.abbiya.broadr.repositories.CommentRepo;
 import com.abbiya.broadr.repositories.MessageRepo;
 import com.abbiya.broadr.utility.AppSingleton;
 import com.abbiya.broadr.utility.Constants;
+import com.abbiya.broadr.utility.PingNetworkUtil;
 import com.path.android.jobqueue.JobManager;
 import com.path.android.jobqueue.config.Configuration;
 
@@ -99,6 +100,7 @@ public class BroadrApp extends Application {
 
     private void configureJobManager() {
         Configuration configuration = new Configuration.Builder(this)
+                .networkUtil(new PingNetworkUtil(this))
                 .minConsumerCount(1)// always keep at least one consumer alive
                 .maxConsumerCount(3)// up to 3 consumers at a time
                 .loadFactor(3)// 3 jobs per consumer
