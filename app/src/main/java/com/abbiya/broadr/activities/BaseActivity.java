@@ -29,7 +29,6 @@ import com.abbiya.broadr.utility.AppSingleton;
 import com.abbiya.broadr.utility.Constants;
 import com.abbiya.broadr.utility.LocationUtils;
 import com.abbiya.broadr.utility.StringUtilities;
-
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -38,7 +37,6 @@ import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListe
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
-
 import com.path.android.jobqueue.JobManager;
 
 import org.json.JSONArray;
@@ -58,8 +56,21 @@ public class BaseActivity extends RoboActionBarActivity implements
         ConnectionCallbacks,
         OnConnectionFailedListener,
         LocationListener {
+    /**
+     * The desired interval for location updates. Inexact. Updates may be more or less frequent.
+     */
+    public static final long UPDATE_INTERVAL_IN_MILLISECONDS = 15000;
+    /**
+     * The fastest rate for active location updates. Exact. Updates will never be more frequent
+     * than this value.
+     */
+    public static final long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS =
+            UPDATE_INTERVAL_IN_MILLISECONDS / 2;
     protected static final String TAG = "location-updates";
-
+    // Keys for storing activity state in the Bundle.
+    protected final static String REQUESTING_LOCATION_UPDATES_KEY = "requesting-location-updates-key";
+    protected final static String LOCATION_KEY = "location-key";
+    protected final static String LAST_UPDATED_TIME_STRING_KEY = "last-updated-time-string-key";
     public static String active_activity = "";
     protected boolean visible = false;
     protected SharedPreferences mPrefs;
@@ -67,25 +78,20 @@ public class BaseActivity extends RoboActionBarActivity implements
     protected SharedPreferences.Editor mEditor;
     protected Context context;
     protected JobManager jobManager;
-
     //location stuff
     protected Board currentBoard;
-
     /**
      * Provides the entry point to Google Play services.
      */
     protected GoogleApiClient mGoogleApiClient;
-
     /**
      * Stores parameters for requests to the FusedLocationProviderApi.
      */
     protected LocationRequest mLocationRequest;
-
     /**
      * Represents a geographical location.
      */
     protected Location mCurrentLocation;
-
     protected long locNotifInterval;
     protected boolean kmOrMi = true;
     protected boolean isFlickrImages;
@@ -93,35 +99,15 @@ public class BaseActivity extends RoboActionBarActivity implements
     protected String latestBGUri;
     protected String registrationId;
     protected Toolbar toolbar;
-
-
-    /**
-     * The desired interval for location updates. Inexact. Updates may be more or less frequent.
-     */
-    public static final long UPDATE_INTERVAL_IN_MILLISECONDS = 10000;
-
-    /**
-     * The fastest rate for active location updates. Exact. Updates will never be more frequent
-     * than this value.
-     */
-    public static final long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS =
-            UPDATE_INTERVAL_IN_MILLISECONDS / 2;
-
     /**
      * Tracks the status of the location updates request. Value changes when the user presses the
      * Start Updates and Stop Updates buttons.
      */
     protected Boolean mRequestingLocationUpdates;
-
     /**
      * Time when the location was updated represented as a String.
      */
     protected String mLastUpdateTime;
-
-    // Keys for storing activity state in the Bundle.
-    protected final static String REQUESTING_LOCATION_UPDATES_KEY = "requesting-location-updates-key";
-    protected final static String LOCATION_KEY = "location-key";
-    protected final static String LAST_UPDATED_TIME_STRING_KEY = "last-updated-time-string-key";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -165,6 +151,11 @@ public class BaseActivity extends RoboActionBarActivity implements
     protected void onResume() {
         super.onResume();
         visible = true;
+
+        int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
+        if (resultCode != ConnectionResult.SUCCESS) {
+            GooglePlayServicesUtil.getErrorDialog(resultCode, this, 1).show();
+        }
 
         init();
 
@@ -440,29 +431,6 @@ public class BaseActivity extends RoboActionBarActivity implements
         startActivity(browserIntent);
     }
 
-    public static class ErrorDialogFragment extends DialogFragment {
-        // Global field to contain the error dialog
-        private Dialog mDialog;
-
-        // Default constructor. Sets the dialog field to null
-        public ErrorDialogFragment() {
-            super();
-            mDialog = null;
-        }
-
-        // Set the dialog to display
-        public void setDialog(Dialog dialog) {
-            mDialog = dialog;
-        }
-
-        // Return a Dialog to the DialogFragment.
-        @Override
-        public Dialog onCreateDialog(Bundle savedInstanceState) {
-            return mDialog;
-        }
-    }
-
-
     /**
      * Updates fields based on data stored in the bundle.
      *
@@ -533,7 +501,9 @@ public class BaseActivity extends RoboActionBarActivity implements
         // application will never receive updates faster than this value.
         mLocationRequest.setFastestInterval(FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS);
 
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setSmallestDisplacement(50);
+
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
     }
 
     /**
@@ -625,7 +595,6 @@ public class BaseActivity extends RoboActionBarActivity implements
         Log.i(TAG, "Connection failed: ConnectionResult.getErrorCode() = " + result.getErrorCode());
     }
 
-
     /**
      * Stores activity data in the Bundle.
      */
@@ -634,5 +603,27 @@ public class BaseActivity extends RoboActionBarActivity implements
         savedInstanceState.putParcelable(LOCATION_KEY, mCurrentLocation);
         savedInstanceState.putString(LAST_UPDATED_TIME_STRING_KEY, mLastUpdateTime);
         super.onSaveInstanceState(savedInstanceState);
+    }
+
+    public static class ErrorDialogFragment extends DialogFragment {
+        // Global field to contain the error dialog
+        private Dialog mDialog;
+
+        // Default constructor. Sets the dialog field to null
+        public ErrorDialogFragment() {
+            super();
+            mDialog = null;
+        }
+
+        // Set the dialog to display
+        public void setDialog(Dialog dialog) {
+            mDialog = dialog;
+        }
+
+        // Return a Dialog to the DialogFragment.
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            return mDialog;
+        }
     }
 }

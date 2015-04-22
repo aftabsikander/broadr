@@ -29,7 +29,7 @@ public class Constants {
     public static final String UPDATE_MESSAGES = "update_messages";
 
     //GCM
-    public static final String GCM_PROJECT_ID = "PROJECT_ID";
+    public static final String GCM_PROJECT_ID = "1026645507924";
     public static final String REGISTER_WITH_GCM = "register_with_gcm";
     public static final String IS_GCM_REGISTATION_JOB_ADDED = "is_registration_with_gcm_added";
     public static final String SENDING_GCM_REGISTRATION_MESSAGE = "sending_registration_message";
