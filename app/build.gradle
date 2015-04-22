@@ -10,7 +10,7 @@ android {
         minSdkVersion 14
         targetSdkVersion 21
         versionCode 19
-        versionName "breeze"
+        versionName "18.1"
     }
     buildTypes {
         release {

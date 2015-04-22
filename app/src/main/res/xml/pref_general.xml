@@ -31,7 +31,7 @@
         android:title="@string/pref_title_distance_type" />
 
     <ListPreference
-        android:defaultValue="900000"
+        android:defaultValue="1"
         android:entries="@array/pref_notif_time_titles"
         android:entryValues="@array/pref_notif_time_values"
         android:key="@string/pref_notif_period"
